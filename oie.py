@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import random
+import math
 
 # Configuration du plateau
 NB_CASES = 63  # Cases numérotées de 1 à 63 (la logique reste inchangée)
@@ -8,8 +9,8 @@ NB_COLS = 9    # Pour les cases 1 à 63, organisées sur 9 colonnes.
 CELL_SIZE = 60
 
 # La largeur du canvas tient compte de la case départ (colonne 0) + les NB_COLS
-CANVAS_WIDTH = (NB_COLS + 1) * CELL_SIZE  
-NB_ROWS = ((NB_CASES - 1) // NB_COLS) + 1  
+CANVAS_WIDTH = (NB_COLS + 1) * CELL_SIZE
+NB_ROWS = ((NB_CASES - 1) // NB_COLS) + 1
 CANVAS_HEIGHT = NB_ROWS * CELL_SIZE
 
 # Définition des cases spéciales (pour les cases 1 à 63)
@@ -29,6 +30,7 @@ SPECIAL_CASES = {
     63: ("final", None)
 }
 
+
 class GooseGame(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -42,12 +44,13 @@ class GooseGame(tk.Tk):
         self.start_frame = tk.Frame(self)
         self.start_frame.pack(padx=10, pady=10)
 
-        tk.Label(self.start_frame, text="Jeu de l'Oie - Entrez les noms des joueurs").pack(pady=5)
-        
+        tk.Label(self.start_frame,
+                 text="Jeu de l'Oie - Entrez les noms des joueurs").pack(pady=5)
+
         # Cadre pour les champs de saisie
         self.players_frame = tk.Frame(self.start_frame)
         self.players_frame.pack(pady=5)
-        
+
         # Liste des entrées pour les noms des joueurs
         self.player_entries = []
         # Ajouter initialement deux joueurs
@@ -55,8 +58,10 @@ class GooseGame(tk.Tk):
             self.add_player_entry()
 
         # Bouton pour ajouter d'autres joueurs
-        tk.Button(self.start_frame, text="Ajouter un joueur", command=self.add_player_entry).pack(pady=5)
-        tk.Button(self.start_frame, text="Commencer le jeu", command=self.start_game).pack(pady=10)
+        tk.Button(self.start_frame, text="Ajouter un joueur",
+                  command=self.add_player_entry).pack(pady=5)
+        tk.Button(self.start_frame, text="Commencer le jeu",
+                  command=self.start_game).pack(pady=10)
 
     def add_player_entry(self):
         entry = tk.Entry(self.players_frame)
@@ -69,7 +74,8 @@ class GooseGame(tk.Tk):
         for entry in self.player_entries:
             name = entry.get().strip()
             if name == "":
-                messagebox.showerror("Erreur", "Veuillez entrer un nom pour chaque joueur.")
+                messagebox.showerror(
+                    "Erreur", "Veuillez entrer un nom pour chaque joueur.")
                 return
             self.players.append({
                 "name": name,
@@ -82,14 +88,16 @@ class GooseGame(tk.Tk):
 
         # Vérifier qu'il y a au moins 2 joueurs
         if len(self.players) < 2:
-            messagebox.showerror("Erreur", "Veuillez ajouter au moins deux joueurs.")
+            messagebox.showerror(
+                "Erreur", "Veuillez ajouter au moins deux joueurs.")
             return
 
         self.start_frame.destroy()
         self.setup_game_screen()
 
     def setup_game_screen(self):
-        self.canvas = tk.Canvas(self, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg="white")
+        self.canvas = tk.Canvas(self, width=CANVAS_WIDTH,
+                                height=CANVAS_HEIGHT, bg="white")
         self.canvas.pack(side=tk.TOP, padx=10, pady=10)
         self.draw_board()
 
@@ -97,7 +105,8 @@ class GooseGame(tk.Tk):
         self.info_label.pack(pady=5)
         self.update_info()
 
-        self.dice_button = tk.Button(self, text="Lancer les dés", command=self.roll_dice)
+        self.dice_button = tk.Button(
+            self, text="Lancer les dés", command=self.roll_dice)
         self.dice_button.pack(pady=5)
 
     def draw_board(self):
@@ -107,13 +116,16 @@ class GooseGame(tk.Tk):
         y1 = 0
         x2 = CELL_SIZE
         y2 = CELL_SIZE
-        self.canvas.create_rectangle(x1, y1, x2, y2, fill="lightgrey", outline="black")
-        self.canvas.create_text(x1+CELL_SIZE/2, y1+CELL_SIZE/2, text="Départ", fill="black")
+        self.canvas.create_rectangle(
+            x1, y1, x2, y2, fill="lightgrey", outline="black")
+        self.canvas.create_text(
+            x1+CELL_SIZE/2, y1+CELL_SIZE/2, text="Départ", fill="black")
 
         # Dessiner les cases 1 à NB_CASES.
         for num in range(1, NB_CASES+1):
             row = (num - 1) // NB_COLS
-            col = ((num - 1) % NB_COLS) + 1  # Décalage de +1 pour laisser la colonne 0 à la case départ.
+            # Décalage de +1 pour laisser la colonne 0 à la case départ.
+            col = ((num - 1) % NB_COLS) + 1
             x1 = col * CELL_SIZE
             y1 = row * CELL_SIZE
             x2 = x1 + CELL_SIZE
@@ -141,29 +153,66 @@ class GooseGame(tk.Tk):
                     fill_color = "gold"
             text = str(num)
             text_color = "white" if typ == "tete de mort" else "black"
-            self.canvas.create_rectangle(x1, y1, x2, y2, fill=fill_color, outline="black")
-            self.canvas.create_text(x1+CELL_SIZE/2, y1+CELL_SIZE/2, text=text, fill=text_color)
-        
+            self.canvas.create_rectangle(
+                x1, y1, x2, y2, fill=fill_color, outline="black")
+            self.canvas.create_text(
+                x1+CELL_SIZE/2, y1+CELL_SIZE/2, text=text, fill=text_color)
+
         self.draw_players()
 
     def draw_players(self):
-        positions = {}
+        # Regrouper les joueurs par case (coordonnées ligne, colonne)
+        groups = {}
         for player in self.players:
-            pos = player["pos"]
-            if pos == 0:
-                row, col = 0, 0
+            if player["pos"] == 0:
+                # La case départ est en (row=0, col=0)
+                key = (0, 0)
             else:
-                row = (pos - 1) // NB_COLS
-                col = ((pos - 1) % NB_COLS) + 1
-            key = (row, col)
-            if key not in positions:
-                positions[key] = 0
-            else:
-                positions[key] += 1
-            x = col * CELL_SIZE + 15 + positions[key] * 20
-            y = row * CELL_SIZE + CELL_SIZE/2
-            self.canvas.create_oval(x, y-10, x+20, y+10, fill="cyan")
-            self.canvas.create_text(x+10, y, text=player["name"][0], fill="black")
+                row = (player["pos"] - 1) // NB_COLS
+                col = ((player["pos"] - 1) % NB_COLS) + \
+                    1  # Décalage pour la case départ
+                key = (row, col)
+            groups.setdefault(key, []).append(player)
+
+        # Paramètres pour les jetons
+        token_width = 20   # largeur du jeton
+        token_height = 20  # hauteur du jeton
+        gap_x = 5          # espacement horizontal entre jetons
+        gap_y = 5          # espacement vertical entre jetons
+
+        # Pour chaque groupe de joueurs sur une même case
+        for (row, col), players_list in groups.items():
+            n = len(players_list)
+            # Calcul du centre de la case
+            cell_x = col * CELL_SIZE
+            cell_y = row * CELL_SIZE
+            cell_center_x = cell_x + CELL_SIZE / 2
+            cell_center_y = cell_y + CELL_SIZE / 2
+
+            # Organiser les jetons sur plusieurs lignes (2 max par ligne)
+            n_rows = math.ceil(n / 2)
+            total_height = n_rows * token_height + (n_rows - 1) * gap_y
+            start_y = cell_center_y - total_height / 2
+
+            # Parcourir les jetons et les dessiner dans leur "cellule" interne
+            for i, player in enumerate(players_list):
+                row_index = i // 2
+                # Nombre de jetons dans la ligne courante (soit 2 ou 1)
+                tokens_in_row = 2 if (i // 2 < n_rows - 1 or n % 2 == 0) else 1
+                # Calcul de la largeur totale occupée par les jetons de la ligne courante
+                total_width = tokens_in_row * \
+                    token_width + (tokens_in_row - 1) * gap_x
+                start_x = cell_center_x - total_width / 2
+
+                # Position horizontale dans la ligne : 0 ou 1 (selon qu'il y a 1 ou 2 jetons sur la ligne)
+                pos_in_row = i % 2
+                x = start_x + pos_in_row * (token_width + gap_x)
+                y = start_y + row_index * (token_height + gap_y)
+
+                self.canvas.create_oval(
+                    x, y, x + token_width, y + token_height, fill="cyan")
+                self.canvas.create_text(
+                    x + token_width / 2, y + token_height / 2, text=player["name"][0], fill="black")
 
     def update_info(self):
         p = self.players[self.current_player]
@@ -176,32 +225,38 @@ class GooseGame(tk.Tk):
 
     def roll_dice(self):
         p = self.players[self.current_player]
-        
+
         if p["skip"] > 0:
-            messagebox.showinfo("Information", f"{p['name']} doit passer ce tour.")
+            messagebox.showinfo(
+                "Information", f"{p['name']} doit passer ce tour.")
             p["skip"] -= 1
             self.next_player()
             return
-        
+
         if p["prison"]:
-            d1, d2 = random.randint(1,6), random.randint(1,6)
-            messagebox.showinfo("Dés", f"{p['name']} (en prison) lance les dés : {d1} et {d2}")
+            d1, d2 = random.randint(1, 6), random.randint(1, 6)
+            messagebox.showinfo(
+                "Dés", f"{p['name']} (en prison) lance les dés : {d1} et {d2}")
             if d1 == d2:
-                messagebox.showinfo("Libération", f"{p['name']} a fait un double et est libéré de prison !")
+                messagebox.showinfo(
+                    "Libération", f"{p['name']} a fait un double et est libéré de prison !")
                 p["prison"] = False
-                self.move_player(p, d1+d2, dice=(d1,d2))
+                self.move_player(p, d1+d2, dice=(d1, d2))
             else:
-                messagebox.showinfo("En prison", f"{p['name']} n'a pas fait de double et reste en prison.")
+                messagebox.showinfo(
+                    "En prison", f"{p['name']} n'a pas fait de double et reste en prison.")
             self.next_player()
             return
 
-        d1, d2 = random.randint(1,6), random.randint(1,6)
+        d1, d2 = random.randint(1, 6), random.randint(1, 6)
         total = d1 + d2
-        messagebox.showinfo("Dés", f"{p['name']} lance les dés : {d1} et {d2} (total = {total})")
-        
+        messagebox.showinfo(
+            "Dés", f"{p['name']} lance les dés : {d1} et {d2} (total = {total})")
+
         if p["first_turn"]:
-            if (d1, d2) in [(6,3), (3,6)]:
-                messagebox.showinfo("Règle spéciale", f"{p['name']} a fait 6+3 au premier tour, il va directement en case 26.")
+            if (d1, d2) in [(6, 3), (3, 6)]:
+                messagebox.showinfo(
+                    "Règle spéciale", f"{p['name']} a fait 6+3 au premier tour, il va directement en case 26.")
                 p["pos"] = 26
                 p["first_turn"] = False
                 self.check_collision(p, old_pos=0)
@@ -209,8 +264,9 @@ class GooseGame(tk.Tk):
                 self.check_win(p)
                 self.next_player()
                 return
-            elif (d1, d2) in [(4,5), (5,4)]:
-                messagebox.showinfo("Règle spéciale", f"{p['name']} a fait 4+5 au premier tour, il va directement en case 53.")
+            elif (d1, d2) in [(4, 5), (5, 4)]:
+                messagebox.showinfo(
+                    "Règle spéciale", f"{p['name']} a fait 4+5 au premier tour, il va directement en case 53.")
                 p["pos"] = 53
                 p["first_turn"] = False
                 self.check_collision(p, old_pos=0)
@@ -224,40 +280,48 @@ class GooseGame(tk.Tk):
         self.check_win(p)
         self.next_player()
 
-    def move_player(self, p, steps, dice=(0,0)):
+    def move_player(self, p, steps, dice=(0, 0)):
         old_pos = p["pos"]
         new_pos = p["pos"] + steps
-        
+
         if new_pos > NB_CASES:
             surplus = new_pos - NB_CASES
             new_pos = NB_CASES - surplus
-            messagebox.showinfo("Dépassement", f"{p['name']} a dépassé la case finale et recule de {surplus} case(s).")
-        
+            messagebox.showinfo(
+                "Dépassement", f"{p['name']} a dépassé la case finale et recule de {surplus} case(s).")
+
         p["pos"] = new_pos
         p["first_turn"] = False
 
         if new_pos in SPECIAL_CASES:
             typ, target = SPECIAL_CASES[new_pos]
             if typ == "oie":
-                messagebox.showinfo("Oie", f"{p['name']} est tombé sur une oie et avance de {steps} case(s) supplémentaires !")
+                messagebox.showinfo(
+                    "Oie", f"{p['name']} est tombé sur une oie et avance de {steps} case(s) supplémentaires !")
                 p["pos"] += steps
             elif typ == "pont":
-                messagebox.showinfo("Pont", f"{p['name']} est sur un pont, il passe directement en case {target}.")
+                messagebox.showinfo(
+                    "Pont", f"{p['name']} est sur un pont, il passe directement en case {target}.")
                 p["pos"] = target
             elif typ == "hotel":
-                messagebox.showinfo("Hôtel", f"{p['name']} est à l'hôtel et va passer 2 tours.")
+                messagebox.showinfo(
+                    "Hôtel", f"{p['name']} est à l'hôtel et va passer 2 tours.")
                 p["skip"] = 2
             elif typ == "puits":
-                messagebox.showinfo("Puits", f"{p['name']} est tombé dans le puits et retourne en case {target}.")
+                messagebox.showinfo(
+                    "Puits", f"{p['name']} est tombé dans le puits et retourne en case {target}.")
                 p["pos"] = target
             elif typ == "labyrinthe":
-                messagebox.showinfo("Labyrinthe", f"{p['name']} est dans le labyrinthe et recule de 12 cases pour aller en case {target}.")
+                messagebox.showinfo(
+                    "Labyrinthe", f"{p['name']} est dans le labyrinthe et recule de 12 cases pour aller en case {target}.")
                 p["pos"] = target
             elif typ == "prison":
-                messagebox.showinfo("Prison", f"{p['name']} est en prison. Il devra faire un double pour en sortir.")
+                messagebox.showinfo(
+                    "Prison", f"{p['name']} est en prison. Il devra faire un double pour en sortir.")
                 p["prison"] = True
             elif typ == "tete de mort":
-                messagebox.showinfo("Tête de mort", f"Oh non ! {p['name']} est tombé sur la tête de mort et retourne au départ.")
+                messagebox.showinfo(
+                    "Tête de mort", f"Oh non ! {p['name']} est tombé sur la tête de mort et retourne au départ.")
                 p["pos"] = target
             elif typ == "final":
                 pass
@@ -267,17 +331,20 @@ class GooseGame(tk.Tk):
     def check_collision(self, current, old_pos):
         for p in self.players:
             if p is not current and p["pos"] == current["pos"]:
-                messagebox.showinfo("Collision", f"{current['name']} atterrit sur {p['name']}. Les pions s'échangent !")
+                messagebox.showinfo(
+                    "Collision", f"{current['name']} atterrit sur {p['name']}. Les pions s'échangent !")
                 p["pos"] = old_pos
 
     def check_win(self, p):
         if p["pos"] == NB_CASES:
-            messagebox.showinfo("Victoire", f"Félicitations ! {p['name']} a gagné la partie !")
+            messagebox.showinfo(
+                "Victoire", f"Félicitations ! {p['name']} a gagné la partie !")
             self.dice_button.config(state=tk.DISABLED)
 
     def next_player(self):
         self.current_player = (self.current_player + 1) % len(self.players)
         self.update_info()
+
 
 if __name__ == "__main__":
     app = GooseGame()
