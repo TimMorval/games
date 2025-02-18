@@ -70,7 +70,7 @@ class GooseGame(tk.Tk):
         for entry in self.player_entries:
             name = entry.get().strip()
             if name == "":
-                self.log_message(
+                self.show_start_error(
                     "Erreur : Veuillez entrer un nom pour chaque joueur.")
                 return
             self.players.append({
@@ -83,28 +83,53 @@ class GooseGame(tk.Tk):
             self.turn_number[name] = 1
 
         if len(self.players) < 2:
-            self.log_message(
+            self.show_start_error(
                 "Erreur : Veuillez ajouter au moins deux joueurs.")
             return
 
         self.start_frame.destroy()
         self.setup_game_screen()
 
+    def show_start_error(self, message):
+        error_window = tk.Toplevel(self)
+        error_window.title("Erreur")
+        tk.Label(error_window, text=message, fg="red").pack(padx=20, pady=20)
+        tk.Button(error_window, text="OK",
+                  command=error_window.destroy).pack(pady=5)
+
     def setup_game_screen(self):
+        # Création d'un cadre principal pour contenir le plateau et les logs
+        self.game_frame = tk.Frame(self)
+        self.game_frame.pack(padx=10, pady=10)
+
+        # Cadre gauche : plateau et informations
+        self.left_frame = tk.Frame(self.game_frame)
+        self.left_frame.pack(side=tk.LEFT)
+
         # Création du canvas du plateau
-        self.canvas = tk.Canvas(self, width=CANVAS_WIDTH,
+        self.canvas = tk.Canvas(self.left_frame, width=CANVAS_WIDTH,
                                 height=CANVAS_HEIGHT, bg="white")
-        self.canvas.pack(side=tk.TOP, padx=10, pady=10)
+        self.canvas.pack(padx=5, pady=5)
         self.draw_board()
 
         # Label d'information sur le tour
-        self.info_label = tk.Label(self, text="")
+        self.info_label = tk.Label(self.left_frame, text="")
         self.info_label.pack(pady=5)
         self.update_info()
 
-        # Zone de message : affiche uniquement le message du tour courant
-        self.log_text = tk.Text(self, height=5, width=50, state=tk.DISABLED)
-        self.log_text.pack(pady=5)
+        # Cadre droit : logs
+        self.right_frame = tk.Frame(self.game_frame)
+        self.right_frame.pack(side=tk.LEFT, padx=10)
+
+        tk.Label(self.right_frame, text="Logs").pack()
+        # Zone de texte pour les logs avec barre de défilement verticale
+        self.log_text = tk.Text(
+            self.right_frame, height=25, width=40, padx=10, pady=10)
+        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.log_scroll = tk.Scrollbar(
+            self.right_frame, command=self.log_text.yview)
+        self.log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_text.config(yscrollcommand=self.log_scroll.set)
 
         # Lancement du dé par l'appui sur n'importe quelle touche
         self.bind("<Key>", self.on_key_press)
@@ -113,11 +138,9 @@ class GooseGame(tk.Tk):
         self.roll_dice()
 
     def log_message(self, message):
-        """Remplace le contenu de la zone de message par le nouveau message."""
-        self.log_text.config(state=tk.NORMAL)
-        self.log_text.delete("1.0", tk.END)
-        self.log_text.insert(tk.END, message)
-        self.log_text.config(state=tk.DISABLED)
+        """Ajoute un message à la zone de logs."""
+        self.log_text.insert(tk.END, message + "\n")
+        self.log_text.see(tk.END)
 
     def draw_board(self):
         self.canvas.delete("all")
