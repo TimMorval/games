@@ -1,20 +1,18 @@
 import tkinter as tk
-from tkinter import messagebox
 import random
 import math
 
 # Configuration du plateau
-NB_CASES = 63   # Cases numérotées de 1 à 63 (la logique reste inchangée)
-NB_COLS = 9     # Pour les cases 1 à 63, organisées sur 9 colonnes.
+NB_CASES = 63   # Cases numérotées de 1 à 63
+NB_COLS = 9     # Organisation sur 9 colonnes.
 CELL_SIZE = 60
 
-# La largeur du canvas tient compte de la case départ (colonne 0) + les NB_COLS
+# Calculs pour le canvas
 CANVAS_WIDTH = (NB_COLS + 1) * CELL_SIZE
 NB_ROWS = ((NB_CASES - 1) // NB_COLS) + 1
 CANVAS_HEIGHT = NB_ROWS * CELL_SIZE
 
-# Définition des cases spéciales (pour les cases 1 à 63)
-# Les valeurs de type seront affichées en petit en dessous du numéro.
+# Définition des cases spéciales
 SPECIAL_CASES = {
     6: ("PONT", 12),
     9: ("OIE", None),
@@ -36,7 +34,7 @@ class GooseGame(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Jeu de l'Oie")
-        self.players = []  # Liste des joueurs (dictionnaires)
+        self.players = []  # Liste des joueurs
         self.current_player = 0
         self.turn_number = {}
         self.setup_start_screen()
@@ -52,13 +50,10 @@ class GooseGame(tk.Tk):
         self.players_frame = tk.Frame(self.start_frame)
         self.players_frame.pack(pady=5)
 
-        # Liste des entrées pour les noms des joueurs
         self.player_entries = []
-        # Ajouter initialement deux joueurs
-        for _ in range(2):
+        for _ in range(2):  # Au moins deux joueurs
             self.add_player_entry()
 
-        # Bouton pour ajouter d'autres joueurs
         tk.Button(self.start_frame, text="Ajouter un joueur",
                   command=self.add_player_entry).pack(pady=5)
         tk.Button(self.start_frame, text="Commencer le jeu",
@@ -70,63 +65,74 @@ class GooseGame(tk.Tk):
         self.player_entries.append(entry)
 
     def start_game(self):
-        # Récupération des noms et initialisation des joueurs
+        # Récupérer les noms et initialiser les joueurs
         self.players = []
         for entry in self.player_entries:
             name = entry.get().strip()
             if name == "":
-                messagebox.showerror(
-                    "Erreur", "Veuillez entrer un nom pour chaque joueur.")
+                self.log_message(
+                    "Erreur : Veuillez entrer un nom pour chaque joueur.")
                 return
             self.players.append({
                 "name": name,
-                "pos": 0,         # Tous commencent sur la case départ (0)
-                "skip": 0,        # Nombre de tours à passer (ex: hôtel)
-                "prison": False,  # Indique s'il est en prison
-                "first_turn": True  # Pour la règle spéciale du premier tour
+                "pos": 0,         # Position de départ
+                "skip": 0,        # Tours à sauter (ex : HOTEL)
+                "prison": False,  # État de prison
+                "first_turn": True  # Règle spéciale du premier tour
             })
             self.turn_number[name] = 1
 
-        # Vérifier qu'il y a au moins 2 joueurs
         if len(self.players) < 2:
-            messagebox.showerror(
-                "Erreur", "Veuillez ajouter au moins deux joueurs.")
+            self.log_message(
+                "Erreur : Veuillez ajouter au moins deux joueurs.")
             return
 
         self.start_frame.destroy()
         self.setup_game_screen()
 
     def setup_game_screen(self):
+        # Création du canvas du plateau
         self.canvas = tk.Canvas(self, width=CANVAS_WIDTH,
                                 height=CANVAS_HEIGHT, bg="white")
         self.canvas.pack(side=tk.TOP, padx=10, pady=10)
         self.draw_board()
 
+        # Label d'information sur le tour
         self.info_label = tk.Label(self, text="")
         self.info_label.pack(pady=5)
         self.update_info()
 
-        self.dice_button = tk.Button(
-            self, text="Lancer les dés", command=self.roll_dice)
-        self.dice_button.pack(pady=5)
+        # Zone de message : affiche uniquement le message du tour courant
+        self.log_text = tk.Text(self, height=5, width=50, state=tk.DISABLED)
+        self.log_text.pack(pady=5)
+
+        # Lancement du dé par l'appui sur n'importe quelle touche
+        self.bind("<Key>", self.on_key_press)
+
+    def on_key_press(self, event):
+        self.roll_dice()
+
+    def log_message(self, message):
+        """Remplace le contenu de la zone de message par le nouveau message."""
+        self.log_text.config(state=tk.NORMAL)
+        self.log_text.delete("1.0", tk.END)
+        self.log_text.insert(tk.END, message)
+        self.log_text.config(state=tk.DISABLED)
 
     def draw_board(self):
         self.canvas.delete("all")
-        # Dessiner la case départ (0) à gauche de la case 1
-        x1 = 0
-        y1 = 0
-        x2 = CELL_SIZE
-        y2 = CELL_SIZE
+        # Dessiner la case départ (0)
+        x1, y1 = 0, 0
+        x2, y2 = CELL_SIZE, CELL_SIZE
         self.canvas.create_rectangle(
             x1, y1, x2, y2, fill="lightgrey", outline="black")
-        # Affichage de "Départ" dans la case départ
-        self.canvas.create_text(
-            x1 + CELL_SIZE/2, y1 + CELL_SIZE/2, text="Départ", fill="black")
+        self.canvas.create_text(x1 + CELL_SIZE/2, y1 +
+                                CELL_SIZE/2, text="Départ", fill="black")
 
-        # Dessiner les cases 1 à NB_CASES.
+        # Dessiner les cases 1 à NB_CASES
         for num in range(1, NB_CASES+1):
             row = (num - 1) // NB_COLS
-            col = ((num - 1) % NB_COLS) + 1  # Décalage pour la case départ
+            col = ((num - 1) % NB_COLS) + 1  # Décalage dû à la case départ
             x1 = col * CELL_SIZE
             y1 = row * CELL_SIZE
             x2 = x1 + CELL_SIZE
@@ -152,24 +158,24 @@ class GooseGame(tk.Tk):
                     fill_color = "black"
                 elif typ == "FINAL":
                     fill_color = "gold"
-                # Le texte spécial en petit (en dessous du numéro)
                 special_text = typ
 
-            # Dessiner la case
             self.canvas.create_rectangle(
                 x1, y1, x2, y2, fill=fill_color, outline="black")
-            # Afficher le numéro en haut (par exemple, en haut du centre)
             self.canvas.create_text(
-                x1 + CELL_SIZE/2, y1 + CELL_SIZE/3, text=str(num), font=("Arial", int(CELL_SIZE/4)), fill="white" if fill_color == "black" else "black")
-            # Si la case est spéciale, afficher en petit le texte en dessous du numéro
+                x1 + CELL_SIZE/2, y1 + CELL_SIZE/3, text=str(num),
+                font=("Arial", int(CELL_SIZE/4)),
+                fill="white" if fill_color == "black" else "black")
             if special_text:
                 self.canvas.create_text(
-                    x1 + CELL_SIZE/2, y1 + CELL_SIZE*0.75, text=special_text, font=("Arial", int(CELL_SIZE/8)), fill="white" if fill_color == "black" else "black")
+                    x1 + CELL_SIZE/2, y1 + CELL_SIZE*0.75, text=special_text,
+                    font=("Arial", int(CELL_SIZE/8)),
+                    fill="white" if fill_color == "black" else "black")
 
         self.draw_players()
 
     def draw_players(self):
-        # Regrouper les joueurs par case (clé : (row, col))
+        # Regrouper les joueurs par case
         groups = {}
         for player in self.players:
             if player["pos"] == 0:
@@ -222,36 +228,35 @@ class GooseGame(tk.Tk):
     def roll_dice(self):
         p = self.players[self.current_player]
         if p["skip"] > 0:
-            messagebox.showinfo(
-                "Information", f"{p['name']} doit passer ce tour.")
+            self.log_message(f"{p['name']} doit passer ce tour.")
             p["skip"] -= 1
             self.next_player()
             return
 
         if p["prison"]:
             d1, d2 = random.randint(1, 6), random.randint(1, 6)
-            messagebox.showinfo(
-                "Dés", f"{p['name']} (en prison) lance les dés : {d1} et {d2}")
+            self.log_message(
+                f"{p['name']} (en prison) lance les dés : {d1} et {d2}")
             if d1 == d2:
-                messagebox.showinfo(
-                    "Libération", f"{p['name']} a fait un double et est libéré de prison !")
+                self.log_message(
+                    f"{p['name']} a fait un double et est libéré de prison !")
                 p["prison"] = False
-                self.move_player(p, d1+d2)
+                self.move_player(p, d1 + d2)
             else:
-                messagebox.showinfo(
-                    "En prison", f"{p['name']} n'a pas fait de double et reste en prison.")
+                self.log_message(
+                    f"{p['name']} n'a pas fait de double et reste en prison.")
             self.next_player()
             return
 
         d1, d2 = random.randint(1, 6), random.randint(1, 6)
         total = d1 + d2
-        messagebox.showinfo(
-            "Dés", f"{p['name']} lance les dés : {d1} et {d2} (total = {total})")
+        self.log_message(
+            f"{p['name']} lance les dés : {d1} et {d2} (total = {total})")
 
         if p["first_turn"]:
             if (d1, d2) in [(6, 3), (3, 6)]:
-                messagebox.showinfo(
-                    "Règle spéciale", f"{p['name']} a fait 6+3 au premier tour, il va directement en case 26.")
+                self.log_message(
+                    f"{p['name']} a fait 6+3 au premier tour, il va directement en case 26.")
                 p["pos"] = 26
                 p["first_turn"] = False
                 self.draw_board()
@@ -259,8 +264,8 @@ class GooseGame(tk.Tk):
                 self.next_player()
                 return
             elif (d1, d2) in [(4, 5), (5, 4)]:
-                messagebox.showinfo(
-                    "Règle spéciale", f"{p['name']} a fait 4+5 au premier tour, il va directement en case 53.")
+                self.log_message(
+                    f"{p['name']} a fait 4+5 au premier tour, il va directement en case 53.")
                 p["pos"] = 53
                 p["first_turn"] = False
                 self.draw_board()
@@ -279,39 +284,39 @@ class GooseGame(tk.Tk):
         if new_pos > NB_CASES:
             surplus = new_pos - NB_CASES
             new_pos = NB_CASES - surplus
-            messagebox.showinfo(
-                "Dépassement", f"{p['name']} a dépassé la case finale et recule de {surplus} case(s).")
+            self.log_message(
+                f"{p['name']} a dépassé la case finale et recule de {surplus} case(s).")
         p["pos"] = new_pos
         p["first_turn"] = False
         if new_pos in SPECIAL_CASES:
             typ, target = SPECIAL_CASES[new_pos]
             if typ == "OIE":
-                messagebox.showinfo(
-                    "Oie", f"{p['name']} est tombé sur une OIE et avance de {steps} case(s) supplémentaires !")
+                self.log_message(
+                    f"{p['name']} est tombé sur une OIE et avance de {steps} case(s) supplémentaires !")
                 p["pos"] += steps
             elif typ == "PONT":
-                messagebox.showinfo(
-                    "Pont", f"{p['name']} est sur un PONT, il passe directement en case {target}.")
+                self.log_message(
+                    f"{p['name']} est sur un PONT, il passe directement en case {target}.")
                 p["pos"] = target
             elif typ == "HOTEL":
-                messagebox.showinfo(
-                    "Hôtel", f"{p['name']} est à l'HOTEL et va passer 2 tours.")
+                self.log_message(
+                    f"{p['name']} est à l'HOTEL et va passer 2 tours.")
                 p["skip"] = 2
             elif typ == "PUITS":
-                messagebox.showinfo(
-                    "Puits", f"{p['name']} est tombé dans le PUITS et retourne en case {target}.")
+                self.log_message(
+                    f"{p['name']} est tombé dans le PUITS et retourne en case {target}.")
                 p["pos"] = target
             elif typ == "LABYRINTHE":
-                messagebox.showinfo(
-                    "Labyrinthe", f"{p['name']} est dans le LABYRINTHE et recule de 12 cases pour aller en case {target}.")
+                self.log_message(
+                    f"{p['name']} est dans le LABYRINTHE et recule de 12 cases pour aller en case {target}.")
                 p["pos"] = target
             elif typ == "PRISON":
-                messagebox.showinfo(
-                    "Prison", f"{p['name']} est en PRISON. Il devra faire un double pour en sortir.")
+                self.log_message(
+                    f"{p['name']} est en PRISON. Il devra faire un double pour en sortir.")
                 p["prison"] = True
             elif typ == "TETE DE MORT":
-                messagebox.showinfo(
-                    "Tête de mort", f"Oh non ! {p['name']} est tombé sur la TÊTE DE MORT et retourne au départ.")
+                self.log_message(
+                    f"Oh non ! {p['name']} est tombé sur la TÊTE DE MORT et retourne au départ.")
                 p["pos"] = target
             elif typ == "FINAL":
                 pass
@@ -320,28 +325,20 @@ class GooseGame(tk.Tk):
     def check_collision(self, current, old_pos):
         for p in self.players:
             if p is not current and p["pos"] == current["pos"]:
-                messagebox.showinfo(
-                    "Collision", f"{current['name']} atterrit sur {p['name']}. Les pions s'échangent !")
+                self.log_message(
+                    f"{current['name']} atterrit sur {p['name']}. Les pions s'échangent !")
                 p["pos"] = old_pos
 
     def check_win(self, p):
         if p["pos"] == NB_CASES:
-            messagebox.showinfo(
-                "Victoire", f"Félicitations ! {p['name']} a gagné la partie !")
-            self.dice_button.config(state=tk.DISABLED)
+            self.log_message(
+                f"Félicitations ! {p['name']} a gagné la partie !")
+            # Plus aucun lancer de dés n'est possible
+            self.unbind("<Key>")
 
     def next_player(self):
         self.current_player = (self.current_player + 1) % len(self.players)
         self.update_info()
-
-    def update_info(self):
-        p = self.players[self.current_player]
-        status = f"C'est au tour de {p['name']} (case {p['pos']})"
-        if p["skip"] > 0:
-            status += f" [saute {p['skip']} tour(s)]"
-        if p["prison"]:
-            status += " [en prison]"
-        self.info_label.config(text=status)
 
 
 if __name__ == "__main__":
