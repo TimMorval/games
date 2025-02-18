@@ -4,8 +4,8 @@ import random
 import math
 
 # Configuration du plateau
-NB_CASES = 63  # Cases numérotées de 1 à 63 (la logique reste inchangée)
-NB_COLS = 9    # Pour les cases 1 à 63, organisées sur 9 colonnes.
+NB_CASES = 63   # Cases numérotées de 1 à 63 (la logique reste inchangée)
+NB_COLS = 9     # Pour les cases 1 à 63, organisées sur 9 colonnes.
 CELL_SIZE = 60
 
 # La largeur du canvas tient compte de la case départ (colonne 0) + les NB_COLS
@@ -14,20 +14,21 @@ NB_ROWS = ((NB_CASES - 1) // NB_COLS) + 1
 CANVAS_HEIGHT = NB_ROWS * CELL_SIZE
 
 # Définition des cases spéciales (pour les cases 1 à 63)
+# Les valeurs de type seront affichées en petit en dessous du numéro.
 SPECIAL_CASES = {
-    6: ("pont", 12),
-    9: ("oie", None),
-    18: ("oie", None),
-    27: ("oie", None),
-    36: ("oie", None),
-    45: ("oie", None),
-    54: ("oie", None),
-    19: ("hotel", None),
-    31: ("puits", 20),
-    42: ("labyrinthe", 30),
-    52: ("prison", None),
-    58: ("tete de mort", 0),
-    63: ("final", None)
+    6: ("PONT", 12),
+    9: ("OIE", None),
+    18: ("OIE", None),
+    27: ("OIE", None),
+    36: ("OIE", None),
+    45: ("OIE", None),
+    54: ("OIE", None),
+    19: ("HOTEL", None),
+    31: ("PUITS", 20),
+    42: ("LABYRINTHE", 30),
+    52: ("PRISON", None),
+    58: ("TETE DE MORT", 0),
+    63: ("FINAL", None)
 }
 
 
@@ -118,101 +119,96 @@ class GooseGame(tk.Tk):
         y2 = CELL_SIZE
         self.canvas.create_rectangle(
             x1, y1, x2, y2, fill="lightgrey", outline="black")
+        # Affichage de "Départ" dans la case départ
         self.canvas.create_text(
-            x1+CELL_SIZE/2, y1+CELL_SIZE/2, text="Départ", fill="black")
+            x1 + CELL_SIZE/2, y1 + CELL_SIZE/2, text="Départ", fill="black")
 
         # Dessiner les cases 1 à NB_CASES.
         for num in range(1, NB_CASES+1):
             row = (num - 1) // NB_COLS
-            # Décalage de +1 pour laisser la colonne 0 à la case départ.
-            col = ((num - 1) % NB_COLS) + 1
+            col = ((num - 1) % NB_COLS) + 1  # Décalage pour la case départ
             x1 = col * CELL_SIZE
             y1 = row * CELL_SIZE
             x2 = x1 + CELL_SIZE
             y2 = y1 + CELL_SIZE
 
-            typ = None
             fill_color = "lightgrey"
+            special_text = ""
             if num in SPECIAL_CASES:
                 typ, _ = SPECIAL_CASES[num]
-                if typ == "oie":
+                if typ == "OIE":
                     fill_color = "lightblue"
-                elif typ == "pont":
+                elif typ == "PONT":
                     fill_color = "orange"
-                elif typ == "hotel":
+                elif typ == "HOTEL":
                     fill_color = "pink"
-                elif typ == "puits":
+                elif typ == "PUITS":
                     fill_color = "lightgreen"
-                elif typ == "labyrinthe":
+                elif typ == "LABYRINTHE":
                     fill_color = "violet"
-                elif typ == "prison":
+                elif typ == "PRISON":
                     fill_color = "red"
-                elif typ == "tete de mort":
+                elif typ == "TETE DE MORT":
                     fill_color = "black"
-                elif typ == "final":
+                elif typ == "FINAL":
                     fill_color = "gold"
-            text = str(num)
-            text_color = "white" if typ == "tete de mort" else "black"
+                # Le texte spécial en petit (en dessous du numéro)
+                special_text = typ
+
+            # Dessiner la case
             self.canvas.create_rectangle(
                 x1, y1, x2, y2, fill=fill_color, outline="black")
+            # Afficher le numéro en haut (par exemple, en haut du centre)
             self.canvas.create_text(
-                x1+CELL_SIZE/2, y1+CELL_SIZE/2, text=text, fill=text_color)
+                x1 + CELL_SIZE/2, y1 + CELL_SIZE/3, text=str(num), font=("Arial", int(CELL_SIZE/4)), fill="white" if fill_color == "black" else "black")
+            # Si la case est spéciale, afficher en petit le texte en dessous du numéro
+            if special_text:
+                self.canvas.create_text(
+                    x1 + CELL_SIZE/2, y1 + CELL_SIZE*0.75, text=special_text, font=("Arial", int(CELL_SIZE/8)), fill="white" if fill_color == "black" else "black")
 
         self.draw_players()
 
     def draw_players(self):
-        # Regrouper les joueurs par case (coordonnées ligne, colonne)
+        # Regrouper les joueurs par case (clé : (row, col))
         groups = {}
         for player in self.players:
             if player["pos"] == 0:
-                # La case départ est en (row=0, col=0)
                 key = (0, 0)
             else:
                 row = (player["pos"] - 1) // NB_COLS
-                col = ((player["pos"] - 1) % NB_COLS) + \
-                    1  # Décalage pour la case départ
+                col = ((player["pos"] - 1) % NB_COLS) + 1
                 key = (row, col)
             groups.setdefault(key, []).append(player)
 
-        # Paramètres pour les jetons
-        token_width = 20   # largeur du jeton
-        token_height = 20  # hauteur du jeton
-        gap_x = 5          # espacement horizontal entre jetons
-        gap_y = 5          # espacement vertical entre jetons
+        token_width = 20
+        token_height = 20
+        gap_x = 5
+        gap_y = 5
 
-        # Pour chaque groupe de joueurs sur une même case
         for (row, col), players_list in groups.items():
             n = len(players_list)
-            # Calcul du centre de la case
             cell_x = col * CELL_SIZE
             cell_y = row * CELL_SIZE
             cell_center_x = cell_x + CELL_SIZE / 2
             cell_center_y = cell_y + CELL_SIZE / 2
 
-            # Organiser les jetons sur plusieurs lignes (2 max par ligne)
             n_rows = math.ceil(n / 2)
             total_height = n_rows * token_height + (n_rows - 1) * gap_y
             start_y = cell_center_y - total_height / 2
 
-            # Parcourir les jetons et les dessiner dans leur "cellule" interne
             for i, player in enumerate(players_list):
                 row_index = i // 2
-                # Nombre de jetons dans la ligne courante (soit 2 ou 1)
                 tokens_in_row = 2 if (i // 2 < n_rows - 1 or n % 2 == 0) else 1
-                # Calcul de la largeur totale occupée par les jetons de la ligne courante
                 total_width = tokens_in_row * \
                     token_width + (tokens_in_row - 1) * gap_x
                 start_x = cell_center_x - total_width / 2
-
-                # Position horizontale dans la ligne : 0 ou 1 (selon qu'il y a 1 ou 2 jetons sur la ligne)
                 pos_in_row = i % 2
                 x = start_x + pos_in_row * (token_width + gap_x)
                 y = start_y + row_index * (token_height + gap_y)
-
                 self.canvas.create_oval(
                     x, y, x + token_width, y + token_height, fill="cyan")
                 self.canvas.create_text(
-                    x + token_width / 2, y + token_height / 2, text=player["name"][0], fill="black")
+                    x + token_width/2, y + token_height/2, text=player["name"][0], fill="black")
 
     def update_info(self):
         p = self.players[self.current_player]
@@ -225,7 +221,6 @@ class GooseGame(tk.Tk):
 
     def roll_dice(self):
         p = self.players[self.current_player]
-
         if p["skip"] > 0:
             messagebox.showinfo(
                 "Information", f"{p['name']} doit passer ce tour.")
@@ -241,7 +236,7 @@ class GooseGame(tk.Tk):
                 messagebox.showinfo(
                     "Libération", f"{p['name']} a fait un double et est libéré de prison !")
                 p["prison"] = False
-                self.move_player(p, d1+d2, dice=(d1, d2))
+                self.move_player(p, d1+d2)
             else:
                 messagebox.showinfo(
                     "En prison", f"{p['name']} n'a pas fait de double et reste en prison.")
@@ -259,7 +254,6 @@ class GooseGame(tk.Tk):
                     "Règle spéciale", f"{p['name']} a fait 6+3 au premier tour, il va directement en case 26.")
                 p["pos"] = 26
                 p["first_turn"] = False
-                self.check_collision(p, old_pos=0)
                 self.draw_board()
                 self.check_win(p)
                 self.next_player()
@@ -269,63 +263,58 @@ class GooseGame(tk.Tk):
                     "Règle spéciale", f"{p['name']} a fait 4+5 au premier tour, il va directement en case 53.")
                 p["pos"] = 53
                 p["first_turn"] = False
-                self.check_collision(p, old_pos=0)
                 self.draw_board()
                 self.check_win(p)
                 self.next_player()
                 return
 
-        self.move_player(p, total, dice=(d1, d2))
+        self.move_player(p, total)
         self.draw_board()
         self.check_win(p)
         self.next_player()
 
-    def move_player(self, p, steps, dice=(0, 0)):
+    def move_player(self, p, steps):
         old_pos = p["pos"]
         new_pos = p["pos"] + steps
-
         if new_pos > NB_CASES:
             surplus = new_pos - NB_CASES
             new_pos = NB_CASES - surplus
             messagebox.showinfo(
                 "Dépassement", f"{p['name']} a dépassé la case finale et recule de {surplus} case(s).")
-
         p["pos"] = new_pos
         p["first_turn"] = False
-
         if new_pos in SPECIAL_CASES:
             typ, target = SPECIAL_CASES[new_pos]
-            if typ == "oie":
+            if typ == "OIE":
                 messagebox.showinfo(
-                    "Oie", f"{p['name']} est tombé sur une oie et avance de {steps} case(s) supplémentaires !")
+                    "Oie", f"{p['name']} est tombé sur une OIE et avance de {steps} case(s) supplémentaires !")
                 p["pos"] += steps
-            elif typ == "pont":
+            elif typ == "PONT":
                 messagebox.showinfo(
-                    "Pont", f"{p['name']} est sur un pont, il passe directement en case {target}.")
+                    "Pont", f"{p['name']} est sur un PONT, il passe directement en case {target}.")
                 p["pos"] = target
-            elif typ == "hotel":
+            elif typ == "HOTEL":
                 messagebox.showinfo(
-                    "Hôtel", f"{p['name']} est à l'hôtel et va passer 2 tours.")
+                    "Hôtel", f"{p['name']} est à l'HOTEL et va passer 2 tours.")
                 p["skip"] = 2
-            elif typ == "puits":
+            elif typ == "PUITS":
                 messagebox.showinfo(
-                    "Puits", f"{p['name']} est tombé dans le puits et retourne en case {target}.")
+                    "Puits", f"{p['name']} est tombé dans le PUITS et retourne en case {target}.")
                 p["pos"] = target
-            elif typ == "labyrinthe":
+            elif typ == "LABYRINTHE":
                 messagebox.showinfo(
-                    "Labyrinthe", f"{p['name']} est dans le labyrinthe et recule de 12 cases pour aller en case {target}.")
+                    "Labyrinthe", f"{p['name']} est dans le LABYRINTHE et recule de 12 cases pour aller en case {target}.")
                 p["pos"] = target
-            elif typ == "prison":
+            elif typ == "PRISON":
                 messagebox.showinfo(
-                    "Prison", f"{p['name']} est en prison. Il devra faire un double pour en sortir.")
+                    "Prison", f"{p['name']} est en PRISON. Il devra faire un double pour en sortir.")
                 p["prison"] = True
-            elif typ == "tete de mort":
+            elif typ == "TETE DE MORT":
                 messagebox.showinfo(
-                    "Tête de mort", f"Oh non ! {p['name']} est tombé sur la tête de mort et retourne au départ.")
+                    "Tête de mort", f"Oh non ! {p['name']} est tombé sur la TÊTE DE MORT et retourne au départ.")
                 p["pos"] = target
-            elif typ == "final":
+            elif typ == "FINAL":
                 pass
-
         self.check_collision(p, old_pos)
 
     def check_collision(self, current, old_pos):
@@ -344,6 +333,15 @@ class GooseGame(tk.Tk):
     def next_player(self):
         self.current_player = (self.current_player + 1) % len(self.players)
         self.update_info()
+
+    def update_info(self):
+        p = self.players[self.current_player]
+        status = f"C'est au tour de {p['name']} (case {p['pos']})"
+        if p["skip"] > 0:
+            status += f" [saute {p['skip']} tour(s)]"
+        if p["prison"]:
+            status += " [en prison]"
+        self.info_label.config(text=status)
 
 
 if __name__ == "__main__":
